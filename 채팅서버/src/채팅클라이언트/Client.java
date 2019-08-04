@@ -169,6 +169,20 @@ public class Client extends JFrame implements ActionListener {
 		
 		System.out.println("현재 넘어온 프로토콜: " + protocol);
 		System.out.println("내용: " + Message);
+		
+		
+		// 새로운 접속자가 있으면
+		if(protocol.equals("NewUser"))
+		{
+			user_list.add(Message);
+			User_list.setListData(user_list);  // GUI에도 추가
+		}
+		
+		else if(protocol.equals("OldUser"))
+		{
+			user_list.add(Message);
+			User_list.setListData(user_list);  // GUI에도 추가
+		}
 	}
 	
 	private void send_message(String str)

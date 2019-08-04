@@ -221,15 +221,15 @@ public class Server extends JFrame implements ActionListener {
 				textArea.append(Nickname + ": 사용자 접속 \n");
 				
 				// 기존 사용자들에게 새로운 사용자 알림 
+				BroadCast("NewUser/" + Nickname);  // 기존 사용자에게 자신을 알린다.
+				
+				// 나 자신에게 기존 사용자를 받아오는 부분 (서버와 연결된 놈에게 보내는 구간)
 				for(int i=0; i<user_vc.size(); i++)
 				{
-					System.out.println("디버깅: 배열");
-					
-					// 현재 접속된 사용자에게 새로운 사용자 알림
-					// 해당 벡터에서 오브젝트 형태로 사용자를 꺼내서 형변환
-					UserInfo u = (UserInfo)user_vc.elementAt(i);  
-					u.send_Message("NewUser/" + Nickname);
+					UserInfo u = (UserInfo)user_vc.elementAt(i);
+					send_Message("OldUser/"+u.Nickname);
 				}
+				
 				
 				// 사용자에게 알린 후 Vector에 자신을 추가
 				user_vc.add(this);
@@ -256,6 +256,19 @@ public class Server extends JFrame implements ActionListener {
 				}  
 			}
 		}  // run 끝
+		
+		
+		// 기존 사용자 받아오는 부분
+		private void BroadCast(String str)  // 전체 사용자에게 메시지 보내는 부분
+		{
+			// 기존 사용자들에게 새로운 사용자 알림 
+			for(int i=0; i<user_vc.size(); i++)
+			{
+				// 해당 벡터에서 오브젝트 형태로 사용자를 꺼내서 형변환
+				UserInfo u = (UserInfo)user_vc.elementAt(i);  
+				u.send_Message("NewUser/" + Nickname);
+			}
+		}
 		
 		
 		// 문자열을 받아서 전송
