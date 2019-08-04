@@ -20,9 +20,6 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
-// 7:02
-
-
 // 프레임을 만드는 2가지 방법: 직접 JFrame을 상속받아서 만들 수도 있고, 객체를 발생시키는 방법도 있다.
 public class Client extends JFrame implements ActionListener {		
 
@@ -59,6 +56,9 @@ public class Client extends JFrame implements ActionListener {
 	private DataInputStream dis;
 	private DataOutputStream dos;
 	
+	// [서버 변수3] ID 받아오기
+	private String id = "";
+	
 	
 	// 생성자
 	Client() 
@@ -70,8 +70,8 @@ public class Client extends JFrame implements ActionListener {
 	
 	
 	
-	// [서버 1] 서버 변수1 사용
-	private void Network()  // try-catch 쓰는 이유: 사용자가 접속할 때 에러가 날 수도 있으므롤 
+	// [서버 1] 서버 변수1 사용 (try-catch 쓰는 이유: 사용자가 접속할 때 에러가 날 수도 있으므로)
+	private void Network()
 	{
 		try {
 			socket = new Socket(ip, port);
@@ -99,6 +99,7 @@ public class Client extends JFrame implements ActionListener {
 	// [서버 2] 서버 변수2 사용 
 	private void Connection()  
 	{
+		// 스트림을 연다.
 		System.out.println("클라이언트 디버깅: 서버와 메시지 주고 받기 위해 스트림을 여는 부분");
 		
 		try {
@@ -110,11 +111,37 @@ public class Client extends JFrame implements ActionListener {
 			
 		} catch (IOException e) {
 			System.out.println("클라이언트 디버깅: Connection에서 스트림 설정할 때 에러가 발생할 수 있어서 try-catch 문으로 감쌈");
-		}
+		}  // 스트림 연결 끝
 		
-		// 사용자가 서버에 접속하면 서버에 보내는 메시지
-		send_message("접속한 클라이언트 : 서버에 메시지 전송");
-	}
+		
+		// 처음 접속시 서버에 자신의 ID를 전송한다.
+		send_message(id);
+		
+		// 이후 쓰레드를 통해 서버로부터 계속 메시지를 받는다.
+		// 쓰레드 안쓸 경우 문제점: 클라이언트가 서버로부터 메시지 수신을 무한정 대기하면서 GUI 화면이 멈춰버린다 (버튼 클릭 불가)
+		Thread th = new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				
+				// 무한루프를 통해 메시지를 받아주도록 한다.
+				while(true)
+				{
+					try {
+						String msg = dis.readUTF();  // 서버로부터 메시지 수신
+						System.out.println("서버로부터 들어온 메시지: " + msg);
+					} 
+					
+					catch (IOException e) {
+						System.out.println("클라이언트: 서버로부터 메시지 받아오는 도중 발생한 에러");
+						e.printStackTrace();
+					}  
+				}
+			}
+			
+		});
+		
+	}  
 	
 	
 	private void send_message(String str)
@@ -126,7 +153,7 @@ public class Client extends JFrame implements ActionListener {
 		} 
 		
 		catch (IOException e) {
-			System.out.println("send_message 에러");
+			System.out.println("클라이언트 send_message 에러");
 			e.printStackTrace();
 		}
 		
@@ -268,9 +295,11 @@ public class Client extends JFrame implements ActionListener {
 		{
 			System.out.println("클라이언트 디버깅: 로그인 버튼 클릭");
 			
-			// 입력창
+			// 입력창 3개
 			ip = ip_tf.getText().trim();
 			port = Integer.parseInt(port_tf.getText().trim());
+			id = id_tf.getText().trim();  // id
+			
 			
 			// 입력 후 [서버1] 함수 실행
 			Network();
@@ -294,6 +323,7 @@ public class Client extends JFrame implements ActionListener {
 		else if(e.getSource() == send_btn)
 		{
 			System.out.println("클라이언트 디버깅: 채팅 전송 버튼 클릭");
+			send_message("임시 테스트");
 		}
 	}
 	

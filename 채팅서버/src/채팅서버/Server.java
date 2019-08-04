@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Vector;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -37,11 +38,9 @@ public class Server extends JFrame implements ActionListener {
 	private Socket socket;
 	private int port;
 	
-	// [서버 변수2] 클라이언트와 데이터 주고 받기
-	private InputStream is;
-	private OutputStream os;
-	private DataInputStream dis;
-	private DataOutputStream dos;
+	// [서버 변수2] 여러 클라이언트와 데이터를 주고 받기 위해 Vector를 쓴다.
+	private Vector user_vc = new Vector();
+
 	
 	
 	// 생성자
@@ -83,39 +82,32 @@ public class Server extends JFrame implements ActionListener {
 			@Override
 			public void run()
 			{
-				try {			
-					// 클라이언트 접속전
-					textArea.append("서버: 사용자 접속 대기중 \n");
-					socket = server_socket.accept();  // 사용자 접속 대기 (무한 대기)
+				// 무한루프: 한사람 받고~ 한바퀴 돌아서 그 다음 사람 받고~ (반복)
+				// 사용자 접속을 1명만 받을게 아니라 계속해서 여러 사용자를 받을 것이므로 무한루프를 걸어서 여러 사용자를 받아주도록 한다.
+				while(true) {
 					
-					// 클라이언트 접속후
-					textArea.append("서버: 사용자 접속함 \n");
-					
-					
-					// 서버 변수2 : 소켓을 연 뒤 스트림 열기 (클라이언트와 메시지 주고 받기 위해)
-					try {
-						is = socket.getInputStream();
-						dis = new DataInputStream(is);
+					try {			
+						// 클라이언트 접속전
+						textArea.append("서버: 사용자 접속 대기중 \n");
+						socket = server_socket.accept();  // 사용자 접속 대기 (무한 대기)
 						
-						os = socket.getOutputStream();
-						dos = new DataOutputStream(os);
-					}
-					
-					catch(IOException e) {
-						System.out.println("서버: 서버쪽 스트림에서 문제 발생함");
-					}
-					
-					
-					// 클라이언트로부터 들어오는 메시지 받기
-					String msg = "";
-					msg = dis.readUTF();
-					textArea.append(msg);
-					
-				} catch (IOException e) {
-					System.out.println("서버: 사용자가 접속할 때 에러가 발생할 수 있기 때문에 try-catch 문으로 묶어준다.");
-					e.printStackTrace();
-				}  
-			}
+						// 클라이언트 접속후
+						textArea.append("서버: 사용자 접속함 \n");
+						
+						
+						
+						// 사용자 접속이 일어나면 객체를 하나 생성해준다.
+						UserInfo user = new UserInfo(socket);   // 사용자의 소켓 정보도 함께 넘겨준다.
+						user.start();  // 유저 각각을 개별적으로 쓰레드를 돌려준다. 
+						
+						
+						
+					} catch (IOException e) {
+						System.out.println("서버: 사용자가 접속할 때 에러가 발생할 수 있기 때문에 try-catch 문으로 묶어준다.");
+						e.printStackTrace();
+					}  
+				}  // while 끝		
+			} // run 끝
 		});
 		
 		// 쓰레드 실행!
@@ -189,20 +181,80 @@ public class Server extends JFrame implements ActionListener {
 		}
 	}
 	
-	// 이벤트를 구분하는 방법 2가지 
-	// 1. 버튼의 이름으로 구별
-	// 2. 바로 직접 비교하는 방법
+
+	// 여러 사용자를 받기 위해 만드는 함수 (사용자 각각의 쓰레드를 만들어줘야 한다)
+	class UserInfo extends Thread
+	{
+		// 스트림
+		private OutputStream os;
+		private InputStream is;
+		private DataOutputStream dos;
+		private DataInputStream dis;
+		
+		// 사용자 소켓
+		private Socket user_socket;
+		
+		// 사용자 닉네임
+		private String Nickname = "";
+		
+		// 생성자
+		UserInfo(Socket soc)
+		{
+			this.user_socket = soc;
+			
+			UserNetwork();
+			
+		}
+		
+		private void UserNetwork()  // 네트워크 자원 설정
+		{
+			try {
+				// user 소켓: 내부클래스이기 때문에 그냥 소켓을 넣어버리면 서버 자체의 소켓으로 인식할 수 있다.
+				is = user_socket.getInputStream();
+				dis = new DataInputStream(is);
+				
+				os = user_socket.getOutputStream();
+				dos = new DataOutputStream(os);
+				
+				// 사용자의 아이디 받아오는 구간
+				Nickname = dis.readUTF();  // 사용자의 닉네임을 받는다.
+				textArea.append(Nickname + ": 사용자 접속 \n");
+			}
+			
+			catch(IOException e) {
+				
+			}
+		}
+		
+		// Thread에서 처리할 내용
+		public void run() 
+		{
+			// 클라이언트와 연결된 메시지 들어오는 곳을 개별쓰레드를 돌려서 게속해서 메시지를 받는다.
+			while(true)
+			{
+				try {
+					String msg = dis.readUTF();  // 메시지 수신
+					textArea.append(Nickname + " 사용자로부터 들어온 메시지 : " + msg + "\n");
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}  
+			}
+		}
+	}
 	
 	
 	public static void main(String[] args) {
 		new Server();  // 익명으로 객체 생성
 	}
 	
-	/*
-		이벤트 리스너 쓰는법
+		// 이벤트를 구분하는 방법 2가지 
+		// 1. 버튼의 이름으로 구별
+		// 2. 바로 직접 비교하는 방법
 	
-		1. 직접 상속
-		2. 익명클래스로 작성
-		3. 내부클래스, 외부클래스
-	*/
+		// 이벤트 리스너 쓰는법
+		// 1. 직접 상속
+		// 2. 익명클래스로 작성
+		// 3. 내부클래스, 외부클래스
 }
