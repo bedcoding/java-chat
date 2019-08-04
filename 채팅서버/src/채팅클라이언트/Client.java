@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.StringTokenizer;
+import java.util.Vector;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -58,6 +60,12 @@ public class Client extends JFrame implements ActionListener {
 	
 	// [서버 변수3] ID 받아오기
 	private String id = "";
+	
+	
+	// [서버 변수4] 접속중인 사람들 표시
+	Vector user_list = new Vector();
+	Vector rood_list = new Vector();
+	StringTokenizer st;
 	
 	
 	// 생성자
@@ -111,25 +119,32 @@ public class Client extends JFrame implements ActionListener {
 			
 		} catch (IOException e) {
 			System.out.println("클라이언트 디버깅: Connection에서 스트림 설정할 때 에러가 발생할 수 있어서 try-catch 문으로 감쌈");
-		}  // 스트림 연결 끝
+		}  // Stream 연결 끝
 		
 		
 		// 처음 접속시 서버에 자신의 ID를 전송한다.
 		send_message(id);
 		
+		// User_list에 사용자 추가 (접속중인 사람들 표시)
+		user_list.add(id);
+		User_list.setListData(user_list);  // 대문자는 GUI (GUI에 추가)
+		
+		
 		// 이후 쓰레드를 통해 서버로부터 계속 메시지를 받는다.
 		// 쓰레드 안쓸 경우 문제점: 클라이언트가 서버로부터 메시지 수신을 무한정 대기하면서 GUI 화면이 멈춰버린다 (버튼 클릭 불가)
 		Thread th = new Thread(new Runnable() {
-
+			
 			@Override
 			public void run() {
 				
-				// 무한루프를 통해 메시지를 받아주도록 한다.
+				System.out.println("무한루프를 통해 메시지를 받아주도록 한다.");	
 				while(true)
 				{
 					try {
 						String msg = dis.readUTF();  // 서버로부터 메시지 수신
 						System.out.println("서버로부터 들어온 메시지: " + msg);
+						
+						inmessage(msg);
 					} 
 					
 					catch (IOException e) {
@@ -138,11 +153,23 @@ public class Client extends JFrame implements ActionListener {
 					}  
 				}
 			}
-			
 		});
 		
+		th.start();
 	}  
 	
+	// 서버로부터 받는 모든 메시지
+	private void inmessage(String str)
+	{
+		System.out.println("토큰을 통해 해당 문자열을 구분시켜준다.");
+		st = new StringTokenizer(str, "/");  // [/]를 통해 분리
+		
+		String protocol = st.nextToken();
+		String Message = st.nextToken();
+		
+		System.out.println("현재 넘어온 프로토콜: " + protocol);
+		System.out.println("내용: " + Message);
+	}
 	
 	private void send_message(String str)
 	{
@@ -296,8 +323,11 @@ public class Client extends JFrame implements ActionListener {
 			System.out.println("클라이언트 디버깅: 로그인 버튼 클릭");
 			
 			// 입력창 3개
-			ip = ip_tf.getText().trim();
-			port = Integer.parseInt(port_tf.getText().trim());
+			// ip = ip_tf.getText().trim();
+			// port = Integer.parseInt(port_tf.getText().trim());
+
+			ip = "127.0.0.1";  // 입력하기 귀찮아서 임시로 이래놈
+			port = 12345;      // 입력하기 귀찮아서 임시로 이래놈
 			id = id_tf.getText().trim();  // id
 			
 			

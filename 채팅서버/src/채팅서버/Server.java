@@ -219,6 +219,20 @@ public class Server extends JFrame implements ActionListener {
 				// 사용자의 아이디 받아오는 구간
 				Nickname = dis.readUTF();  // 사용자의 닉네임을 받는다.
 				textArea.append(Nickname + ": 사용자 접속 \n");
+				
+				// 기존 사용자들에게 새로운 사용자 알림 
+				for(int i=0; i<user_vc.size(); i++)
+				{
+					System.out.println("디버깅: 배열");
+					
+					// 현재 접속된 사용자에게 새로운 사용자 알림
+					// 해당 벡터에서 오브젝트 형태로 사용자를 꺼내서 형변환
+					UserInfo u = (UserInfo)user_vc.elementAt(i);  
+					u.send_Message("NewUser/" + Nickname);
+				}
+				
+				// 사용자에게 알린 후 Vector에 자신을 추가
+				user_vc.add(this);
 			}
 			
 			catch(IOException e) {
@@ -240,6 +254,19 @@ public class Server extends JFrame implements ActionListener {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}  
+			}
+		}  // run 끝
+		
+		
+		// 문자열을 받아서 전송
+		private void send_Message(String str)  
+		{
+			try {
+				dos.writeUTF(str);
+			} 
+			
+			catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}
