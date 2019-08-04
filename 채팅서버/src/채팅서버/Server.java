@@ -2,7 +2,11 @@ package 채팅서버;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -17,21 +21,27 @@ import javax.swing.border.EmptyBorder;
 
 public class Server extends JFrame implements ActionListener {
 
-	// [GUI 1] 별개의 프로젝트에서 윈도우 빌더로 만든 뒤 가져옴
+	// [GUI 변수1] 별개의 프로젝트에서 윈도우 빌더로 만든 뒤 가져옴
 	private JPanel contentPane;
 	private JTextField port_tf;
 	
 	
-	// [GUI 2] 쉽게 쓰기 위해  init() 함수에서 가져와서 전역변수로 바꿈
+	// [GUI 변수2] 쉽게 쓰기 위해  init() 함수에서 가져와서 전역변수로 바꿈
 	JTextArea textArea = new JTextArea();
 	JButton start_btn = new JButton("서버 실행");
 	JButton stop_btn = new JButton("서버 중지");
 	
 	
-	// [서버 1]
+	// [서버 변수1] 네트워크를 위한 자원 변수
 	private ServerSocket server_socket;
 	private Socket socket;
 	private int port;
+	
+	// [서버 변수2] 클라이언트와 데이터 주고 받기
+	private InputStream is;
+	private OutputStream os;
+	private DataInputStream dis;
+	private DataOutputStream dos;
 	
 	
 	// 생성자
@@ -47,10 +57,10 @@ public class Server extends JFrame implements ActionListener {
 	{
 		try {
 			server_socket = new ServerSocket(port);  // 포트번호
-		} 
+		}
 		
 		catch (IOException e) {
-			System.out.println("포트가 이미 열려 있으면, 포트를 열 수 없어서 에러가 발생하므로 try-catch 문으로 묶어준다.");
+			System.out.println("서버: 포트가 이미 열려 있으면, 포트를 열 수 없어서 에러가 발생하므로 try-catch 문으로 묶어준다.");
 			e.printStackTrace();
 		} 
 		
@@ -64,22 +74,45 @@ public class Server extends JFrame implements ActionListener {
 	// [서버 2] 실질적으로 사용자가 들어오는 부분 작성 (사용자가 접속되게 하기 위한 과정)
 	private void Connection()
 	{
-		// 쓰레드 쓰는 이유: accept() 함수에서 사용자 접속을 대기하는 동안 프로그램은 다른 일을 못하고 죽어버린다.
+		System.out.println("서버: 쓰레드 접근");
+		
+		
+		// 서버 변수1 (쓰레드를 안 쓰면 accept() 함수에서 사용자 접속을 대기하는 동안 프로그램은 다른 일을 못하고 죽어버린다)
 		Thread th = new Thread(new Runnable() 
 		{
 			@Override
 			public void run()
 			{
 				try {			
-					// 접속전
-					textArea.append("사용자 접속 대기중 \n");
+					// 클라이언트 접속전
+					textArea.append("서버: 사용자 접속 대기중 \n");
 					socket = server_socket.accept();  // 사용자 접속 대기 (무한 대기)
 					
-					// 접속후
-					textArea.append("사용자 접속함 \n");
+					// 클라이언트 접속후
+					textArea.append("서버: 사용자 접속함 \n");
+					
+					
+					// 서버 변수2 : 소켓을 연 뒤 스트림 열기 (클라이언트와 메시지 주고 받기 위해)
+					try {
+						is = socket.getInputStream();
+						dis = new DataInputStream(is);
+						
+						os = socket.getOutputStream();
+						dos = new DataOutputStream(os);
+					}
+					
+					catch(IOException e) {
+						System.out.println("서버: 서버쪽 스트림에서 문제 발생함");
+					}
+					
+					
+					// 클라이언트로부터 들어오는 메시지 받기
+					String msg = "";
+					msg = dis.readUTF();
+					textArea.append(msg);
 					
 				} catch (IOException e) {
-					System.out.println("사용자가 접속할 때 에러가 발생할 수 있기 때문에 try-catch 문으로 묶어준다.");
+					System.out.println("서버: 사용자가 접속할 때 에러가 발생할 수 있기 때문에 try-catch 문으로 묶어준다.");
 					e.printStackTrace();
 				}  
 			}
@@ -145,14 +178,14 @@ public class Server extends JFrame implements ActionListener {
 	public void actionPerformed(ActionEvent e) {
 		
 		if(e.getSource() == start_btn) {
-			System.out.println("디버깅: start 버튼 클릭");
+			System.out.println("서버 디버깅: start 버튼 클릭");
 
 			port = Integer.parseInt(port_tf.getText().trim());  // 포트번호
 			Server_start();  // [서버 1] 함수 실행
 		}
 		
 		else if(e.getSource() == stop_btn) {
-			System.out.println("디버깅: 서버 stop 버튼 클릭");
+			System.out.println("서버 디버깅: 서버 stop 버튼 클릭");
 		}
 	}
 	
@@ -164,9 +197,6 @@ public class Server extends JFrame implements ActionListener {
 	public static void main(String[] args) {
 		new Server();  // 익명으로 객체 생성
 	}
-
-	
-
 	
 	/*
 		이벤트 리스너 쓰는법

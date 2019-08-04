@@ -2,7 +2,11 @@ package 채팅클라이언트;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -16,10 +20,13 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
+// 7:02
+
+
 // 프레임을 만드는 2가지 방법: 직접 JFrame을 상속받아서 만들 수도 있고, 객체를 발생시키는 방법도 있다.
 public class Client extends JFrame implements ActionListener {		
 
-	// [GUI 1] 로그인 GUI 변수 (별개의 프로젝트에서 윈도우 빌더로 만든 뒤 가져옴)
+	// [GUI 변수1] 로그인 GUI 변수 (별개의 프로젝트에서 윈도우 빌더로 만든 뒤 가져옴)
 	private JFrame Login_GUI = new JFrame();  // 로그인 창은 따로 발생시킬 것이다.
 	private JPanel Login_Pane;
 	private JTextField ip_tf;    // ip를 받는 텍스트 필드
@@ -28,7 +35,7 @@ public class Client extends JFrame implements ActionListener {
 	JButton login_btn = new JButton("접속하기");  // 버튼 (필요한 자원들을 전역변수로 뺌)
 	
 	
-	// [GUI 2] Main GUI 변수 (이것도 윈도우 빌더로 만든 후 가져옴) 
+	// [GUI 변수2] Main GUI 변수 (이것도 윈도우 빌더로 만든 후 가져옴) 
 	private JPanel contentPane;
 	private JTextField message_tf;
 	private JButton notesend_btn = new JButton("쪽지보내기");   // 버튼 (필요한 자원들을 전역변수로 뺌)
@@ -41,10 +48,16 @@ public class Client extends JFrame implements ActionListener {
 	JTextArea Chat_area = new JTextArea();   // 채팅을 할 때 창 부분
 	
 	
-	// [서버 1] 네트워크를 위한 자원 변수
+	// [서버 변수1] 네트워크를 위한 자원 변수
 	private Socket socket;  // 클라이언트 소켓
 	private String ip; // = "127.0.0.1";  // 127.0.0.1은 자기 자신
 	private int port; // = 12345;
+	
+	// [서버 변수2] 서버와 데이터 주고 받기
+	private InputStream is;
+	private OutputStream os;
+	private DataInputStream dis;
+	private DataOutputStream dos;
 	
 	
 	// 생성자
@@ -57,22 +70,66 @@ public class Client extends JFrame implements ActionListener {
 	
 	
 	
-	// [서버 1]
+	// [서버 1] 서버 변수1 사용
 	private void Network()  // try-catch 쓰는 이유: 사용자가 접속할 때 에러가 날 수도 있으므롤 
 	{
 		try {
 			socket = new Socket(ip, port);
+
+			// 만약 소켓이 null이 아닌 경우
+			if(socket != null)
+			{
+				Connection();
+				System.out.println("클라이언트 디버깅: 정상적으로 소켓이 연결되었습니다");
+			}
 		} 
 		
 		catch (UnknownHostException e) {
-			System.out.println("해당 호스트를 찾을 수 없을 때 발생하는 에러");
+			System.out.println("클라이언트 디버깅: 해당 호스트를 찾을 수 없을 때 발생하는 에러");
 			e.printStackTrace();
 		} 
 		
 		catch (IOException e) {
-			System.out.println("스트림에서 발생하는 에러");
+			System.out.println("클라이언트 디버깅: 스트림에서 발생하는 에러");
 			e.printStackTrace();
 		}
+	}
+	
+	
+	// [서버 2] 서버 변수2 사용 
+	private void Connection()  
+	{
+		System.out.println("클라이언트 디버깅: 서버와 메시지 주고 받기 위해 스트림을 여는 부분");
+		
+		try {
+			is = socket.getInputStream();
+			dis = new DataInputStream(is);
+			
+			os = socket.getOutputStream();
+			dos = new DataOutputStream(os);
+			
+		} catch (IOException e) {
+			System.out.println("클라이언트 디버깅: Connection에서 스트림 설정할 때 에러가 발생할 수 있어서 try-catch 문으로 감쌈");
+		}
+		
+		// 사용자가 서버에 접속하면 서버에 보내는 메시지
+		send_message("접속한 클라이언트 : 서버에 메시지 전송");
+	}
+	
+	
+	private void send_message(String str)
+	{
+		System.out.println("클라이언트 디버깅: Output 스트림을 통해 서버에게 메시지를 보내는 부분");
+		
+		try {
+			dos.writeUTF(str);  // 문자열을 받아서 dos.writeUTF로 보낸다.
+		} 
+		
+		catch (IOException e) {
+			System.out.println("send_message 에러");
+			e.printStackTrace();
+		}
+		
 	}
 	
 	
@@ -209,33 +266,34 @@ public class Client extends JFrame implements ActionListener {
 
 		if(e.getSource() == login_btn)
 		{
-			System.out.println("디버깅: 로그인 버튼 클릭");
-			Network(); // [서버 1] 함수 실행
+			System.out.println("클라이언트 디버깅: 로그인 버튼 클릭");
 			
-			// 입력창 3개
+			// 입력창
 			ip = ip_tf.getText().trim();
 			port = Integer.parseInt(port_tf.getText().trim());
 			
+			// 입력 후 [서버1] 함수 실행
+			Network();
 		}
 		
 		else if(e.getSource() == notesend_btn)
 		{
-			System.out.println("디버깅: 쪽지 보내기 버튼 클릭");
+			System.out.println("클라이언트 디버깅: 쪽지 보내기 버튼 클릭");
 		}
 		
 		else if(e.getSource() == joinroom_btn)
 		{
-			System.out.println("디버깅: 방 참여 버튼 클릭");
+			System.out.println("클라이언트 디버깅: 방 참여 버튼 클릭");
 		}
 		
 		else if(e.getSource() == createroom_btn)
 		{
-			System.out.println("디버깅: 방 만들기 버튼 클릭");
+			System.out.println("클라이언트 디버깅: 방 만들기 버튼 클릭");
 		}
 		
 		else if(e.getSource() == send_btn)
 		{
-			System.out.println("디버깅: 채팅 전송 버튼 클릭");
+			System.out.println("클라이언트 디버깅: 채팅 전송 버튼 클릭");
 		}
 	}
 	
